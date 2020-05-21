@@ -96,9 +96,12 @@ func handleConnection(c net.Conn) {
 	}
 
 	if allow {
-		c.Write([]byte{ver, 0x00}) // success
+		c.Write([]byte{0x01, 0x00}) // success
+		log.Println("allow")
 	} else {
 		c.Write([]byte{ver, 0x01}) // failed
+		log.Println("not allow")
+		goto cerr
 	}
 
 	// connect to server
@@ -107,6 +110,8 @@ func handleConnection(c net.Conn) {
 		// handle error
 		log.Println("connect to server failed.")
 		return
+	}else{
+		log.Println("connect to server ok.")
 	}
 	defer s.Close()
 
@@ -127,13 +132,31 @@ func handleConnection(c net.Conn) {
 	// loop read/write
 	//wg.Add(1)
 	go func() {
-		io.Copy(c, s)
+		log.Println("copy1 s->c")
+		var l int64 = 0
+		//buf2 := make([]byte, 10)
+		//_,err := c.Read(buf2)
+
+		if l, err = io.Copy(c, s); err==nil{
+			log.Printf("copy s->c ok[%d]\n", l)
+		}else{
+			log.Println("copy s->c err")
+		}
+
 		iodone <- 1
 		//wg.Done()
 	}()
 	//wg.Add(1)
 	go func() {
-		io.Copy(s, c)
+		log.Println("copy2 c->s")
+
+		var l int64 = 0
+		if l, err  = io.Copy(s, c); err==nil{
+			log.Printf("copy c->s ok [%d]\n", l)
+		}else{
+			log.Println("copy c->s err")
+		}
+
 		iodone <- 1
 		//wg.Done()
 	}()
@@ -194,7 +217,7 @@ func main() {
 			}
 		}
 
-		//log.Printf("%#v",USERS)
+		log.Printf("%#v",USERS)
 
 		if len(USERS) < 1 {
 			log.Fatal("no users configed.")
